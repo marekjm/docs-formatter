@@ -1,0 +1,6 @@
+__pychache__/
+*.py[co]
+
+.*
+!.gitignore
+!.gitkeep
