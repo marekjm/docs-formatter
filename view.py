@@ -89,6 +89,7 @@ def longen(lines, width):
     return [longen_line(each, width) for each in lines]
 
 
+RENDER_TIMESTAMP = os.environ.get('RENDER_TIMESTAMP', 'none')
 LINE_WIDTH = int(os.environ.get('RENDER_COLUMNS', -1))
 MARGIN_COLUMNS = 2
 if LINE_WIDTH is -1:
@@ -1682,9 +1683,13 @@ def main(args):
         sys.stdout.write('<a id="0"></a>\n')
         sys.stdout.write('<pre>\n')
 
-    emit_line('Generated {}'.format(datetime.datetime.now().astimezone().strftime('%FT%T %z')))
-    emit_line()
-    emit_line('{}\n'.format('-' * LINE_WIDTH))
+    timestamp_line = 'Generated {}'.format(
+        datetime.datetime.now().astimezone().strftime('%FT%T %z')
+    )
+    if RENDER_TIMESTAMP == 'above':
+        emit_line(timestamp_line)
+        emit_line()
+        emit_line('{}\n'.format('-' * LINE_WIDTH))
 
     if TITLE is not None:
         emit_line(TITLE.center(LINE_WIDTH))
@@ -1700,6 +1705,10 @@ def main(args):
             render_toc_full()
             continue
         emit_line('{}'.format(each))
+
+    if RENDER_TIMESTAMP == 'below':
+        emit_line('{}\n'.format('-' * LINE_WIDTH))
+        emit_line(timestamp_line)
 
     if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
         sys.stdout.write('</pre>\n')
