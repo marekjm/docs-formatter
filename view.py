@@ -1692,8 +1692,8 @@ def main(args):
         emit_line('{}\n'.format('-' * LINE_WIDTH))
 
     if TITLE is not None:
-        emit_line(TITLE.center(LINE_WIDTH))
-        emit_line(('-' * (len(TITLE) + 2)).center(LINE_WIDTH))
+        emit_line(TITLE.center(LINE_WIDTH).rstrip())
+        emit_line(('-' * (len(TITLE) + 2)).center(LINE_WIDTH).rstrip())
         emit_line()
         emit_line()
 
