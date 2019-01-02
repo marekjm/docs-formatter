@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+a { color: #000; }
+div.source_code_listing { color: #0a0a0a; background-color: #e0e0e0; }
+</style>
+<title>Docs formatter</title>
+</head>
+<body>
+<a id="0"></a>
+<pre>
+                                 Docs formatter                                 
+                                ----------------                                
+
+
+                              OVERVIEW OF CONTENTS                              
+
+1 _______________________________________________________________________ <a href="#1"><strong>README</strong></a>
+2 _____________________________________________________________________ <a href="#2"><strong>Features</strong></a>
+3 ______________________________________________________________________ <a href="#3"><strong>License</strong></a>
+
+--------------------------------------------------------------------------------
+
+
+                               TABLE OF CONTENTS                                
+
+1 _______________________________________________________________________ <a href="#1"><strong>README</strong></a>
+1.1 ..................................................................... <a href="#1-1">Output</a>
+1.2 ...................................................................... <a href="#1-2">Input</a>
+2 _____________________________________________________________________ <a href="#2"><strong>Features</strong></a>
+2.1 ......................................................... <a href="#2-1">Lists vs "listeds"</a>
+2.2 ................................................. <a href="#2-2">Function call tree example</a>
+2.3 ....................................................... <a href="#2-3">Features not present</a>
+3 ______________________________________________________________________ <a href="#3"><strong>License</strong></a>
+
+--------------------------------------------------------------------------------
+
+
+
+  [1] <a id="1"></a><a href="#1"><strong>README</strong></a> {readme}                                                       <a href="#0">^^^^</a>
+
+  Docs formatter - a text formatter for documentation.
+
+
+  [1.1] <a id="1-1"></a><a href="#1-1"><strong>Output</strong></a> {readme.output}                                              <a href="#0">^^^^</a>
+
+  It  produces  a  preformatted  text output suitable for viewing on the command
+  line and HTML output suitable for the Web. The HTML output is preformatted and
+  looks  exactly  like  the  plain  text  output  for the command line; the only
+  difference is the presence of hyperlinks and basic colourisation.
+
+
+  [1.2] <a id="1-2"></a><a href="#1-2"><strong>Input</strong></a> {readme.input}                                                <a href="#0">^^^^</a>
+
+  It takes source in LaTeX-like notation as input.
+
+
+  [2] <a id="2"></a><a href="#2"><strong>Features</strong></a> {features}                                                   <a href="#0">^^^^</a>
+
+  Features of the formatter include:
+
+  - automatic generation of Table of Contents
+  - arbitrarily nested sections to express the necessary hierarchy
+  - automatic text reflow
+  - lists of items
+  - "listeds"  displaying all possible values of certain kind (e.g. instructions
+    of an architecture, packet types in a protocol)
+  - automatic formatting of function call trees
+  - references (forward and backward)
+  - file inclusion
+
+
+  [2.1] <a id="2-1"></a><a href="#2-1"><strong>Lists vs "listeds"</strong></a>                                                  <a href="#0">^^^^</a>
+
+  Here is an example of a list:
+
+  - hello
+  - world
+  - lorem
+  - ipsum
+
+  Lists  may  not be nested. Descriptions of a list item may be arbitrarily long
+  and include line breaks.
+
+  Here is an example of a "listed":
+
+    hello      world      foo        bar        baz        lorem      
+    ipsum      alpha      beta       gamma      delta      epsilon    
+
+  [2.2] <a id="2-2"></a><a href="#2-2"><strong>Function call tree example</strong></a>                                          <a href="#0">^^^^</a>
+
+  An example of a formatted function call tree:
+
+  main()
+  ↳ open("/etc/example.conf")
+  ↳ do_stuff(fd)
+    Descriptions  may  be  present  at  each  level  of  the  call stack and are
+    automatically  indented  to  be  just below and slightly to the right of the
+    function call they describe.
+
+    ↳ some_function_with_long_name(
+                                     and_a = "pretty long"
+                                   , list_of = "arguments"
+                                   , that_it_needs_to = receive
+      )
+
+      Calls  whose  list  of arguments would exceed column limit if printed on a
+      single line are automatically broken and reformatted.
+    ↳ exit(1)
+
+  This  feature  is  quite primitive and limited, and is only able to describe a
+  single  call  tree  with  no  conditional calls. Any conditional calls must be
+  marked as such in description.
+
+
+  [2.3] <a id="2-3"></a><a href="#2-3"><strong>Features not present</strong></a>                                                <a href="#0">^^^^</a>
+
+  Some  features  are  omitted  from the code to keep the formatter simple. Most
+  notable  omissions  include lack of support for arbitrary levels of nesting of
+  different  constructs  (e.g.  lists),  and lack of support for custom layouts.
+
+
+  [3] <a id="3"></a><a href="#3"><strong>License</strong></a>                                                               <a href="#0">^^^^</a>
+
+  The code is published under GNU GPL v3.
+
+</pre>
+</body>
+</html>
