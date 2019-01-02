@@ -1,6 +1,8 @@
 __pychache__/
 *.py[co]
 
+*.json
+
 .*
 !.gitignore
 !.gitkeep
