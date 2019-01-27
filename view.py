@@ -187,6 +187,15 @@ KEYWORD_CALLSEQUENCE_END = r'\callsequence{end}'
 KEYWORD_CALL_BEGIN = r'\call{begin}'
 KEYWORD_CALL_END = r'\call{end}'
 KEYWORD_CALLOF = re.compile(r'\\callof{(.*)}')
+KEYWORD_TABLE_BEGIN_REGEX = re.compile(r'\\table{begin}')
+KEYWORD_TABLE_END_REGEX = re.compile(r'\\table{end}')
+KEYWORD_HEADER_BEGIN_REGEX = re.compile(r'\\header{begin}')
+KEYWORD_HEADER_END_REGEX = re.compile(r'\\header{end}')
+KEYWORD_BODY_BEGIN_REGEX = re.compile(r'\\body{begin}')
+KEYWORD_BODY_END_REGEX = re.compile(r'\\body{end}')
+KEYWORD_ROW_REGEX = re.compile(r'\\row')
+KEYWORD_NAME_REGEX = re.compile(r'\\name{(.*?)}')
+KEYWORD_FIELD_REGEX = re.compile(r'\\field{([^}]*)}')
 def paragraph_visible(para):
     para = (para[0] if para else None)
     if para is None:
@@ -335,6 +344,36 @@ def into_paragraphs(text):
             para = []
             continue
         if KEYWORD_CALLOF.match(each):
+            if para:
+                paragraphs.append(para)
+            paragraphs.append([each])
+            para = []
+            continue
+        if each == r'\table{begin}' or each == r'\table{end}':
+            if para:
+                paragraphs.append(para)
+            paragraphs.append([each])
+            para = []
+            continue
+        if each == r'\header{begin}' or each == r'\header{end}':
+            if para:
+                paragraphs.append(para)
+            paragraphs.append([each])
+            para = []
+            continue
+        if each == r'\row':
+            if para:
+                paragraphs.append(para)
+            paragraphs.append([each])
+            para = []
+            continue
+        if KEYWORD_NAME_REGEX.match(each):
+            if para:
+                paragraphs.append(para)
+            paragraphs.append([each])
+            para = []
+            continue
+        if KEYWORD_FIELD_REGEX.match(each):
             if para:
                 paragraphs.append(para)
             paragraphs.append([each])
@@ -1002,6 +1041,11 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
     in_listed_sorted = False
     listed_items = []
 
+    in_table = False
+    in_table_header = False
+    in_table_body = False
+    table_definition = {}
+
     in_callsequence = False
     callsequence_depth = 0
 
@@ -1149,6 +1193,119 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
             if callsequence_depth:
                 indent -= DEFAULT_INDENT_WIDTH
                 current_content = NESTED_CALL_MARKER + current_content
+        if KEYWORD_TABLE_BEGIN_REGEX.match(each):
+            in_table = True
+            table_definition['columns'] = 0
+            table_definition['title'] = ''
+            table_definition['header'] = []
+            table_definition['text_alignment'] = []
+            table_definition['data'] = []
+            continue
+        if KEYWORD_TABLE_END_REGEX.match(each):
+            in_table = False
+
+            # render_table(table_definition, indent)
+            header_lengths = list(map(len, table_definition['header']))
+            longest_header = max(header_lengths)
+
+            data_lengths_x = list(map(lambda each: list(map(len, each)), table_definition['data']))
+            data_lengths = [ [0] for each in range(table_definition['columns']) ]
+            for i in range(table_definition['columns']):
+                for each in data_lengths_x:
+                    data_lengths[i].append(each[i])
+
+            data_lengths = [ max(each) for each in data_lengths ]
+
+            column_lengths = [ max([data_lengths[i], header_lengths[i],]) for i in range(table_definition['columns']) ]
+
+            column_separator = ' | '
+
+            table_width = min([
+                (sum(column_lengths) + (len(column_separator) * (table_definition['columns'] - 1))),
+                LINE_WIDTH,
+            ])
+
+            current_indent_text = (' ' * indent)
+            header_sep = current_indent_text + ('-' * (table_width - len(current_indent_text)))
+
+            print(header_sep)
+
+            print(current_indent_text + column_separator.join(
+                map(lambda i: table_definition['header'][i].ljust(column_lengths[i]),
+                    range(table_definition['columns']))))
+            print(header_sep)
+
+            for each in table_definition['data']:
+                row_text = column_separator.join([
+                    (str.ljust if table_definition['text_alignment'][i] == 'left' else str.rjust)(
+                        each[i],
+                        column_lengths[i],
+                    )
+                    for i
+                    # Format all but last column according to the general rule. The last field is
+                    # special in that it supports free-flow text and will be automatically wrapped.
+                    in range(table_definition['columns'] - 1)
+                ])
+
+                last_field_indent = current_indent_text + (' ' * len(row_text)) + column_separator
+                last_field_text = each[-1]
+
+                _ = tokenise(last_field_text)
+                _ = render_tokenised(_,
+                    syntax = syntax,
+                    documented_instructions = documented_instructions,
+                    reflow = reflow,
+                    wrapping = wrapping,
+                    width = (LINE_WIDTH - len(last_field_indent)),
+                )
+                last_field_text = '\n'.join(_)
+
+                last_field_first_line, *last_field_text = (last_field_text.splitlines() or ('',))
+                last_field_text = textwrap.indent(
+                    text = '\n'.join(last_field_text),
+                    prefix = last_field_indent,
+                )
+                if last_field_first_line:
+                    row_text += (column_separator + last_field_first_line)
+
+                print(current_indent_text + row_text)
+                if last_field_text:
+                    print(last_field_text)
+
+            continue
+        if KEYWORD_NAME_REGEX.match(each):
+            current_content = ('<< ' + KEYWORD_NAME_REGEX.match(each).group(1))
+        if KEYWORD_HEADER_BEGIN_REGEX.match(each):
+            in_table_header = True
+            continue
+        if KEYWORD_HEADER_END_REGEX.match(each):
+            in_table_header = False
+            table_definition['columns'] = len(table_definition['header'])
+            continue
+        if KEYWORD_BODY_BEGIN_REGEX.match(each):
+            in_table_body = True
+            continue
+        if KEYWORD_BODY_END_REGEX.match(each):
+            in_table_body = False
+            continue
+        if each == r'\row':
+            table_definition['data'].append([])
+            continue
+        if KEYWORD_FIELD_REGEX.match(each):
+            field_text = KEYWORD_FIELD_REGEX.match(each).group(1)
+            if in_table_header:
+                table_definition['header'].append(field_text)
+
+                params = build_params(PARAMETER_REGEX.findall(each[len(field_text) + 2 + len(r'\field'):]), {
+                    'align': Types.string,
+                }, default = {
+                    'align': 'left',
+                })
+
+                table_definition['text_alignment'].append(params['align'])
+            if in_table_body:
+                table_definition['data'][-1].append(field_text)
+            continue
 
         current_indent_text = (' ' * indent)
 
