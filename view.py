@@ -194,7 +194,6 @@ KEYWORD_HEADER_END_REGEX = re.compile(r'\\header{end}')
 KEYWORD_BODY_BEGIN_REGEX = re.compile(r'\\body{begin}')
 KEYWORD_BODY_END_REGEX = re.compile(r'\\body{end}')
 KEYWORD_ROW_REGEX = re.compile(r'\\row')
-KEYWORD_NAME_REGEX = re.compile(r'\\name{(.*?)}')
 KEYWORD_FIELD_REGEX = re.compile(r'\\field{([^}]*)}')
 def paragraph_visible(para):
     para = (para[0] if para else None)
@@ -367,12 +366,6 @@ def into_paragraphs(text):
             paragraphs.append([each])
             para = []
             continue
-        if KEYWORD_NAME_REGEX.match(each):
-            if para:
-                paragraphs.append(para)
-            paragraphs.append([each])
-            para = []
-            continue
         if KEYWORD_FIELD_REGEX.match(each):
             if para:
                 paragraphs.append(para)
@@ -398,6 +391,7 @@ class SectionTracker:
         self._path = []
         self._counters = { '': self._start_counting_at, }
         self._recorded_headings = []
+        self._recorded_tables = []
 
     def data(self):
         recorded = self._recorded_headings
@@ -426,6 +420,9 @@ class SectionTracker:
     def recorded_headings(self):
         return self._recorded_headings
 
+    def recorded_tables(self):
+        return self._recorded_tables
+
     def slug(self, index):
         return index.replace('.', '-')
 
@@ -446,6 +443,12 @@ class SectionTracker:
         self._counters[base_index] += 1
 
         return index
+
+    def table(self, title, ref):
+        self._recorded_tables.append({
+            'title': title,
+            'ref': ref,
+        })
 
     def begin(self):
         # This marker is only useful for tracking how many sections were opened to
@@ -1136,6 +1139,9 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
         if each == r'\toc{full}':
             print(each)
             continue
+        if each == r'\toc{tables}':
+            print(each)
+            continue
         if each == r'\reflow{off}':
             reflow = False
             continue
@@ -1281,22 +1287,20 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
 
             params = build_params(PARAMETER_REGEX.findall(each[len(r'\table{begin}'):]), {
                 'ref': Types.string,
+                'title': Types.string,
             }, default = {
                 'ref': None,
             })
             table_definition['ref'] = params['ref']
+            table_definition['title'] = params['title']
+
+            section_tracker.table(title = params['title'], ref = params['ref'])
 
             continue
         if KEYWORD_TABLE_END_REGEX.match(each):
             in_table = False
 
             render_table(table_definition, indent, ref = table_definition['ref'])
-            continue
-        if KEYWORD_NAME_REGEX.match(each):
-            table_title = KEYWORD_NAME_REGEX.match(each).group(1)
-
-            table_definition['title'] = table_title
-            table_definition['ref'] = params['ref']
             continue
         if KEYWORD_HEADER_BEGIN_REGEX.match(each):
             in_table_header = True
@@ -1835,6 +1839,32 @@ def render_toc_overview():
 def render_toc_full():
     render_toc()
 
+def render_toc_tables():
+    if RENDERING_MODE != RENDERING_MODE_HTML_ASCII_ART:
+        return
+
+    emit_line('{}'.format('TABLES'.center(LINE_WIDTH)))
+    emit_line()
+    longest_index = max(map(len, map(lambda e: e[0], section_tracker.recorded_headings()))) + 1
+    for each in section_tracker.recorded_tables():
+        ref = each['ref']
+        title = each['title']
+
+        if ref is None:
+            continue
+
+        if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
+            heading_link = '<a href="#t-{slug}">{text}</a>'.format(
+                slug = ref,
+                text = title,
+            )
+            emit_line('{}'.format(
+                heading_link,
+            ))
+    emit_line()
+    emit_line('{}'.format('-' * LINE_WIDTH))
+    emit_line()
+
 def main(args):
     render_view(args)
 
@@ -1883,6 +1913,9 @@ def main(args):
             continue
         if each == r'\toc{full}':
             render_toc_full()
+            continue
+        if each == r'\toc{tables}':
+            render_toc_tables()
             continue
         emit_line('{}'.format(each))
 
