@@ -611,6 +611,84 @@ def render_heading(heading_text, indent, noise = False, extra = None, ref = None
 
     print(rendered_line)
 
+def render_table(table_definition, indent, ref = None):
+    header_lengths = list(map(len, table_definition['header']))
+    longest_header = max(header_lengths)
+
+    data_lengths_x = list(map(lambda each: list(map(len, each)), table_definition['data']))
+    data_lengths = [ [0] for each in range(table_definition['columns']) ]
+    for i in range(table_definition['columns']):
+        for each in data_lengths_x:
+            data_lengths[i].append(each[i])
+
+    data_lengths = [ max(each) for each in data_lengths ]
+
+    column_lengths = [ max([data_lengths[i], header_lengths[i],]) for i in range(table_definition['columns']) ]
+
+    column_separator = ' | '
+
+    table_width = min([
+        (sum(column_lengths) + (len(column_separator) * (table_definition['columns'] - 1))),
+        LINE_WIDTH,
+    ])
+
+    current_indent_text = (' ' * indent)
+    header_sep = current_indent_text + ('-' * (table_width - len(current_indent_text)))
+
+    table_marker = ('&lt&lt;' if (RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART) else '<<')
+    format_line_title = '{marker} {text}'
+    if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART and (ref is not None):
+        format_line_title = '{marker} <a id="t-{slug}"></a><a href="#t-{slug}">{text}</a>'
+    print(current_indent_text + format_line_title.format(
+        slug = ref,
+        text = table_definition['title'],
+        marker = table_marker,
+    ))
+    print(header_sep)
+
+    print(current_indent_text + column_separator.join(
+        map(lambda i: table_definition['header'][i].ljust(column_lengths[i]),
+            range(table_definition['columns']))))
+    print(header_sep)
+
+    for each in table_definition['data']:
+        row_text = column_separator.join([
+            (str.ljust if table_definition['text_alignment'][i] == 'left' else str.rjust)(
+                each[i],
+                column_lengths[i],
+            )
+            for i
+            # Format all but last column according to the general rule. The last field is
+            # special in that it supports free-flow text and will be automatically wrapped.
+            in range(table_definition['columns'] - 1)
+        ])
+
+        last_field_indent = current_indent_text + (' ' * len(row_text)) + column_separator
+        last_field_text = each[-1]
+
+        _ = tokenise(last_field_text)
+        _ = render_tokenised(_,
+            syntax = None,
+            documented_instructions = None,
+            reflow = True,
+            wrapping = False,
+            width = (LINE_WIDTH - len(last_field_indent)),
+        )
+        last_field_text = '\n'.join(_)
+
+        last_field_first_line, *last_field_text = (last_field_text.splitlines() or ('',))
+        last_field_text = textwrap.indent(
+            text = '\n'.join(last_field_text),
+            prefix = last_field_indent,
+        )
+        if last_field_first_line:
+            row_text += (column_separator + last_field_first_line)
+
+        print(current_indent_text + row_text)
+        if last_field_text:
+            print(last_field_text)
+
+
 class Types:
     @staticmethod
     def boolean(value):
@@ -1200,81 +1278,26 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
             table_definition['header'] = []
             table_definition['text_alignment'] = []
             table_definition['data'] = []
+
+            params = build_params(PARAMETER_REGEX.findall(each[len(r'\table{begin}'):]), {
+                'ref': Types.string,
+            }, default = {
+                'ref': None,
+            })
+            table_definition['ref'] = params['ref']
+
             continue
         if KEYWORD_TABLE_END_REGEX.match(each):
             in_table = False
 
-            # render_table(table_definition, indent)
-            header_lengths = list(map(len, table_definition['header']))
-            longest_header = max(header_lengths)
-
-            data_lengths_x = list(map(lambda each: list(map(len, each)), table_definition['data']))
-            data_lengths = [ [0] for each in range(table_definition['columns']) ]
-            for i in range(table_definition['columns']):
-                for each in data_lengths_x:
-                    data_lengths[i].append(each[i])
-
-            data_lengths = [ max(each) for each in data_lengths ]
-
-            column_lengths = [ max([data_lengths[i], header_lengths[i],]) for i in range(table_definition['columns']) ]
-
-            column_separator = ' | '
-
-            table_width = min([
-                (sum(column_lengths) + (len(column_separator) * (table_definition['columns'] - 1))),
-                LINE_WIDTH,
-            ])
-
-            current_indent_text = (' ' * indent)
-            header_sep = current_indent_text + ('-' * (table_width - len(current_indent_text)))
-
-            print(header_sep)
-
-            print(current_indent_text + column_separator.join(
-                map(lambda i: table_definition['header'][i].ljust(column_lengths[i]),
-                    range(table_definition['columns']))))
-            print(header_sep)
-
-            for each in table_definition['data']:
-                row_text = column_separator.join([
-                    (str.ljust if table_definition['text_alignment'][i] == 'left' else str.rjust)(
-                        each[i],
-                        column_lengths[i],
-                    )
-                    for i
-                    # Format all but last column according to the general rule. The last field is
-                    # special in that it supports free-flow text and will be automatically wrapped.
-                    in range(table_definition['columns'] - 1)
-                ])
-
-                last_field_indent = current_indent_text + (' ' * len(row_text)) + column_separator
-                last_field_text = each[-1]
-
-                _ = tokenise(last_field_text)
-                _ = render_tokenised(_,
-                    syntax = syntax,
-                    documented_instructions = documented_instructions,
-                    reflow = reflow,
-                    wrapping = wrapping,
-                    width = (LINE_WIDTH - len(last_field_indent)),
-                )
-                last_field_text = '\n'.join(_)
-
-                last_field_first_line, *last_field_text = (last_field_text.splitlines() or ('',))
-                last_field_text = textwrap.indent(
-                    text = '\n'.join(last_field_text),
-                    prefix = last_field_indent,
-                )
-                if last_field_first_line:
-                    row_text += (column_separator + last_field_first_line)
-
-                print(current_indent_text + row_text)
-                if last_field_text:
-                    print(last_field_text)
-
+            render_table(table_definition, indent, ref = table_definition['ref'])
             continue
         if KEYWORD_NAME_REGEX.match(each):
-            current_content = ('<< ' + KEYWORD_NAME_REGEX.match(each).group(1))
+            table_title = KEYWORD_NAME_REGEX.match(each).group(1)
+
+            table_definition['title'] = table_title
+            table_definition['ref'] = params['ref']
+            continue
         if KEYWORD_HEADER_BEGIN_REGEX.match(each):
             in_table_header = True
             continue
