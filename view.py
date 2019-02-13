@@ -1843,9 +1843,6 @@ def render_toc_tables():
     if RENDERING_MODE != RENDERING_MODE_HTML_ASCII_ART:
         return
 
-    emit_line('{}'.format('TABLES'.center(LINE_WIDTH)))
-    emit_line()
-    longest_index = max(map(len, map(lambda e: e[0], section_tracker.recorded_headings()))) + 1
     for each in section_tracker.recorded_tables():
         ref = each['ref']
         title = each['title']
@@ -1853,14 +1850,13 @@ def render_toc_tables():
         if ref is None:
             continue
 
-        if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
-            heading_link = '<a href="#t-{slug}">{text}</a>'.format(
-                slug = ref,
-                text = title,
-            )
-            emit_line('{}'.format(
-                heading_link,
-            ))
+        heading_link = '  <a href="#t-{slug}">{text}</a>'.format(
+            slug = ref,
+            text = title,
+        )
+        emit_line('{}'.format(
+            heading_link,
+        ))
     emit_line()
     emit_line('{}'.format('-' * LINE_WIDTH))
     emit_line()
