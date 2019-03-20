@@ -1696,6 +1696,7 @@ def main(args):
                   'div.source_code_listing {'
                 + ' color: #0a0a0a;'
                 + ' background-color: #e0e0e0;'
+                + ' margin-bottom: -1em;'
                 + ' }\n'
             )
         sys.stdout.write('</style>\n')
