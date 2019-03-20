@@ -392,8 +392,8 @@ class SectionTracker:
     def recorded_headings(self):
         return self._recorded_headings
 
-    def slug(self, index):
-        return index.replace('.', '-')
+    def slug(self, index, ref = None):
+        return (ref or index).replace('.', '-')
 
     def current_base_index(self):
         return '.'.join(map(str, self._path))
@@ -525,7 +525,7 @@ def render_multiline_heading(heading_text, index, indent, noise, extra, ref):
     print(format_line_title.format(
         prefix = (' ' * indent),
         index = index,
-        slug = section_tracker.slug(index),
+        slug = section_tracker.slug(index, ref),
         text = colorise(heading_text, colorise_with),
         top_marker = top_marker,
         top_marker_spacing = top_marker_spacing,
@@ -564,14 +564,14 @@ def render_heading(heading_text, indent, noise = False, extra = None, ref = None
     rendered_line = format_line.format(
         prefix = (' ' * indent),
         index = index,
-        slug = section_tracker.slug(index),
+        slug = section_tracker.slug(index, ref),
         text = colorise(heading_text, colorise_with),
         ref = ref_name,
         top_marker = top_marker,
         top_marker_spacing = top_marker_spacing,
     )
 
-    visible_width = indent + len(index) + 2 + 1 + len(section_tracker.slug(index)) + len(ref_name)
+    visible_width = indent + len(index) + 2 + 1 + len(section_tracker.slug(index, ref)) + len(ref_name)
     if visible_width >= (LINE_WIDTH - len(TOP_MARKER)):
         return render_multiline_heading(heading_text, index, indent, noise, extra, ref)
 
@@ -1631,7 +1631,7 @@ def render_toc(max_depth = None, title = 'TABLE OF CONTENTS'):
             just = (character * (LINE_WIDTH - longest_index - 1 - len(heading)))
             heading_link = '{just} <a href="#{slug}">{text}</a>'.format(
                 just = just,
-                slug = section_tracker.slug(index),
+                slug = section_tracker.slug(index, ref),
                 text = (
                     '<strong>{}</strong>'.format(heading)
                     if is_chapter
