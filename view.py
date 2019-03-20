@@ -207,9 +207,11 @@ def into_paragraphs(text):
 
     lines = []
     for each in raw_lines:
-        if lines and lines[-1] and lines[-1][-1] == '\\':
+        if lines and lines[-1] and (lines[-1][-1] == '\\' and lines[-1][-2] != '\\'):
             lines[-1] = lines[-1][:-1] + each
             continue
+        if lines and lines[-1] and (lines[-1][-1] == '\\' and lines[-1][-2] == '\\'):
+            lines[-1] = lines[-1][:-1]
 
         lines.append(each)
 
