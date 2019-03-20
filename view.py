@@ -14,6 +14,9 @@ except ImportError:
     colored = None
 
 
+__version__ = '0.0.1'
+
+
 # Available rendering modes.
 RENDERING_MODE_ASCII_ART = 'RENDERING_MODE_ASCII_ART'
 RENDERING_MODE_HTML_ASCII_ART = 'RENDERING_MODE_HTML_ASCII_ART'
@@ -1658,6 +1661,23 @@ def render_toc_full():
     render_toc()
 
 def main(args):
+    if (not len(args)) or ('--help' in args) or ('-h' in args):
+        sys.stdout.write('docs-formatter <source-file>\n')
+        sys.stdout.write('\n')
+        sys.stdout.write('OPTIONS\n')
+        sys.stdout.write('\n')
+        sys.stdout.write('    -h, --help    - display help\n')
+        sys.stdout.write('        --version - display version information\n')
+        sys.stdout.write('\n')
+        sys.stdout.write('LICENSE\n')
+        sys.stdout.write('\n')
+        sys.stdout.write('    This program is Free Software published under GNU GPL v3 license.\n')
+        exit(not len(args))
+
+    if ('--version' in args):
+        sys.stdout.write('{}\n'.format(__version__))
+        exit(0)
+
     render_view(args)
 
     if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
