@@ -180,6 +180,7 @@ PARAMETER_REGEX = re.compile(r'{([a-z_]+)(?:(=[^}]*))?}')
 KEYWORD_INSTRUCTION_REGEX = re.compile(r'\\instruction{([a-z]+)}')
 KEYWORD_SYNTAX_REGEX = re.compile(r'\\syntax{([0-9]+)}')
 KEYWORD_REF_REGEX = re.compile(r'\\ref{([a-z_][a-z0-9_]*(?:[:.][a-z_][a-z0-9_]*)*)}')
+KEYWORD_NAMEREF_REGEX = re.compile(r'\\nameref{([a-z_][a-z0-9_]*(?:[:.][a-z_][a-z0-9_]*)*)}')
 KEYWORD_COLOR_REGEX = re.compile(r'\\color{([a-z]+)}{([^}]+)}')
 KEYWORD_INCLUDE = re.compile(r'\\include{(.*)}')
 KEYWORD_TITLE_REGEX = re.compile(r'\\title{(.*)}')
@@ -496,6 +497,21 @@ def parse_and_expand(text, syntax, documented_instructions):
             (replacement or REF_NOT_FOUND_MARKER),
         )
 
+    found_name_refs = re.compile(r'\\nameref{([a-z_][a-z0-9_]*(?::[a-z_][a-z0-9_]*)*)}').findall(expanded_text)
+    for each in found_refs:
+        if REFS is not None and each not in REFS['labels']:
+            raise InvalidReference('invalid reference: \\nameref{{{}}}\n'.format(each))
+        replacement = (REFS['labels'][each].get('name') if REFS is not None else None)
+        if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
+            replacement = '<a href="#{location}">{name}</a>'.format(
+                location = (replacement or REF_NOT_FOUND_MARKER).replace('.', '-'),
+                name = replacement,
+            )
+        expanded_text = expanded_text.replace(
+            (r'\nameref{' + each + '}'),
+            (replacement or REF_NOT_FOUND_MARKER),
+        )
+
 
     return expanded_text
 
@@ -515,8 +531,14 @@ def render_multiline_heading(heading_text, index, indent, noise, extra, ref):
         ref_name = ' {{{}}}'.format(ref)
     top_marker = ''
     top_marker_spacing = ''
+
+    slug = section_tracker.slug(index, ref)
+    index_slug = index.replace('.', '-')
+
     if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
-        format_line_title = '{prefix}[{index}] <a id="{slug}"></a><a href="#{slug}">{text}</a>{top_marker_spacing}{top_marker}'
+        format_line_title = '{prefix}[{index}] <a id="{slug}"><a id="{index_slug}"></a><a href="#{slug}">{text}</a>{top_marker_spacing}{top_marker}'
+        if slug == index_slug:
+            format_line_title = '{prefix}[{index}] <a id="{index_slug}"></a><a href="#{slug}">{text}</a>{top_marker_spacing}{top_marker}'
         format_line_ref = '{prefix}{index_prefix}{ref}'
         top_marker_spacing = (' ' * (LINE_WIDTH - indent - len(index) - len(heading_text) - 1 -
             len(TOP_MARKER) - 2))
@@ -525,7 +547,8 @@ def render_multiline_heading(heading_text, index, indent, noise, extra, ref):
     print(format_line_title.format(
         prefix = (' ' * indent),
         index = index,
-        slug = section_tracker.slug(index, ref),
+        index_slug = index_slug,
+        slug = slug,
         text = colorise(heading_text, colorise_with),
         top_marker = top_marker,
         top_marker_spacing = top_marker_spacing,
@@ -553,8 +576,14 @@ def render_heading(heading_text, indent, noise = False, extra = None, ref = None
         ref_name = ' {{{}}}'.format(ref)
     top_marker = ''
     top_marker_spacing = ''
+
+    slug = section_tracker.slug(index, ref)
+    index_slug = index.replace('.', '-')
+
     if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
-        format_line = '{prefix}[{index}] <a id="{slug}"></a><a href="#{slug}"><strong>{text}</strong></a>{ref}{top_marker_spacing}{top_marker}'
+        format_line = '{prefix}[{index}] <a id="{slug}"></a><a id="{index_slug}"></a><a href="#{slug}"><strong>{text}</strong></a>{ref}{top_marker_spacing}{top_marker}'
+        if slug == index_slug:
+            format_line = '{prefix}[{index}] <a id="{index_slug}"></a><a href="#{slug}"><strong>{text}</strong></a>{ref}{top_marker_spacing}{top_marker}'
         top_marker_spacing = (
             ' ' *
             (LINE_WIDTH - indent - len(index) - len(heading_text) - len(ref_name) - 1 - len(TOP_MARKER) - 2)
@@ -564,7 +593,8 @@ def render_heading(heading_text, indent, noise = False, extra = None, ref = None
     rendered_line = format_line.format(
         prefix = (' ' * indent),
         index = index,
-        slug = section_tracker.slug(index, ref),
+        index_slug = index_slug,
+        slug = slug,
         text = colorise(heading_text, colorise_with),
         ref = ref_name,
         top_marker = top_marker,
@@ -687,6 +717,14 @@ class RENDERING_MODE_ASCII_RENDERER:
             replacement = (REFS['labels'][name].get('index') if REFS is not None else None)
             return (replacement or REF_NOT_FOUND_MARKER)
 
+        m = KEYWORD_NAMEREF_REGEX.match(text)
+        if m:
+            name = m.group(1)
+            if REFS is not None and name not in REFS['labels']:
+                raise InvalidReference('invalid reference: \\nameref{{{}}}\n'.format(name))
+            replacement = (REFS['labels'][name].get('name') if REFS is not None else None)
+            return (replacement or REF_NOT_FOUND_MARKER)
+
         m = KEYWORD_COLOR_REGEX.match(text)
         if m:
             color = m.group(1)
@@ -718,6 +756,14 @@ class RENDERING_MODE_ASCII_RENDERER:
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
             replacement = (REFS['labels'][name].get('index') if REFS is not None else None)
+            return len(replacement or REF_NOT_FOUND_MARKER)
+
+        m = KEYWORD_NAMEREF_REGEX.match(text)
+        if m:
+            name = m.group(1)
+            if REFS is not None and name not in REFS['labels']:
+                raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
+            replacement = (REFS['labels'][name].get('name') if REFS is not None else None)
             return len(replacement or REF_NOT_FOUND_MARKER)
 
         m = KEYWORD_COLOR_REGEX.match(text)
@@ -767,6 +813,19 @@ class RENDERING_MODE_HTML_ASCII_ART_RENDERER:
             )
             return replacement
 
+        m = KEYWORD_NAMEREF_REGEX.match(text)
+        if m:
+            name = m.group(1)
+            if REFS is not None and name not in REFS['labels']:
+                raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
+            location = (REFS['labels'][name].get('index') if REFS is not None else REF_NOT_FOUND_MARKER)
+            replacement = (REFS['labels'][name].get('name') if REFS is not None else REF_NOT_FOUND_MARKER)
+            replacement = '<a href="#{location}">{name}</a>'.format(
+                location = location.replace('.', '-'),
+                name = replacement,
+            )
+            return replacement
+
         m = KEYWORD_COLOR_REGEX.match(text)
         if m:
             color = m.group(1)
@@ -798,6 +857,14 @@ class RENDERING_MODE_HTML_ASCII_ART_RENDERER:
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
             replacement = (REFS['labels'][name].get('index') if REFS is not None else None)
+            return len(replacement or REF_NOT_FOUND_MARKER)
+
+        m = KEYWORD_NAMEREF_REGEX.match(text)
+        if m:
+            name = m.group(1)
+            if REFS is not None and name not in REFS['labels']:
+                raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
+            replacement = (REFS['labels'][name].get('name') if REFS is not None else None)
             return len(replacement or REF_NOT_FOUND_MARKER)
 
         m = KEYWORD_COLOR_REGEX.match(text)
@@ -977,6 +1044,12 @@ def tokenise(text):
             continue
 
         m = KEYWORD_REF_REGEX.match(text[i:])
+        if m is not None:
+            tokens.append(m.group(0))
+            i += len(tokens[-1])
+            continue
+
+        m = KEYWORD_NAMEREF_REGEX.match(text[i:])
         if m is not None:
             tokens.append(m.group(0))
             i += len(tokens[-1])
