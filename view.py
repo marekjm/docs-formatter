@@ -512,7 +512,6 @@ def parse_and_expand(text, syntax, documented_instructions):
             (replacement or REF_NOT_FOUND_MARKER),
         )
 
-
     return expanded_text
 
 def render_multiline_heading(heading_text, index, indent, noise, extra, ref):
@@ -831,6 +830,8 @@ class RENDERING_MODE_HTML_ASCII_ART_RENDERER:
             color = m.group(1)
             content = m.group(2)
             return colorise(content, color)
+
+        text = text.replace('<', '&lt;').replace('>', '&gt;')
         return text
 
     @staticmethod
@@ -1071,6 +1072,7 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
     original_indent = indent
     reflow = True
     wrapping = False
+    in_source = False
 
     in_list = False
     in_list_enumerated = False
@@ -1107,6 +1109,7 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
             reflow = True
             continue
         if KEYWORD_SOURCE_BEGIN_REGEX.match(each):
+            in_source = True
             wrapping = True
             reflow = False
             indent += 2
@@ -1114,6 +1117,7 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
                 print('<div class="source_code_listing">')
             continue
         if KEYWORD_SOURCE_END_REGEX.match(each):
+            in_source = False
             wrapping = False
             reflow = True
             indent -= 2
@@ -1383,8 +1387,6 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
             )
             text = '\n'.join(_)
 
-        # if reflow:
-        #     text = text_reflow(text, indent).strip()
         if wrapping:
             text = text_wrap(text, indent)
         text = textwrap.indent(
@@ -1395,6 +1397,13 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
             text = current_indent_text[:-2] + '-' + text[indent - 1:]
             # text = (' ' * (indent - 2) + '-' + text[indent - 1:])
             new_list_item = False
+
+        # We need this because basic replacement is performed as part of the
+        # render_tokenised() function which is only called for the "reflow"
+        # parts of the text.
+        if in_source and (RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART):
+            text = text.replace('<', '&lt;').replace('>', '&gt;')
+
         print(text)
 
         if KEYWORD_CALLOF.match(each):
