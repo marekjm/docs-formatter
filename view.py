@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 
 # Available rendering modes.
@@ -179,7 +179,7 @@ KEYWORD_HEADING_REGEX = re.compile(r'\\heading{([^}]+)}')
 PARAMETER_REGEX = re.compile(r'{([a-z_]+)(?:(=[^}]*))?}')
 KEYWORD_INSTRUCTION_REGEX = re.compile(r'\\instruction{([a-z]+)}')
 KEYWORD_SYNTAX_REGEX = re.compile(r'\\syntax{([0-9]+)}')
-KEYWORD_REF_REGEX = re.compile(r'\\ref{([a-z_][a-z0-9_]*(?:[:.][a-z_][a-z0-9_]*)*)}')
+KEYWORD_REF_REGEX = re.compile(r'\\ref{([a-z_][a-z0-9_]*(?:[:.][a-z0-9_]+)*)}')
 KEYWORD_NAMEREF_REGEX = re.compile(r'\\nameref{([a-z_][a-z0-9_]*(?:[:.][a-z_][a-z0-9_]*)*)}')
 KEYWORD_COLOR_REGEX = re.compile(r'\\color{([a-z]+)}{([^}]+)}')
 KEYWORD_INCLUDE = re.compile(r'\\include{(.*)}')
