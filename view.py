@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.5'
+__version__ = '0.0.6'
 __commit__ = 'HEAD'
 
 
@@ -32,12 +32,11 @@ def print(*args, **kwargs):
     RENDERED_LINES.append(' '.join(args))
 
 
-COLOR_OPCODE = 'white'
-COLOR_SECTION_MAJOR = 'white'
-COLOR_SECTION_MINOR = 'white'
-COLOR_SECTION_SUBSECTION = 'white'
-COLOR_SYNTAX_SAMPLE_INDEX = 'cyan'
-COLOR_SYNTAX_SAMPLE = 'green'
+COLOR_SECTION_INDEX = 'red'
+COLOR_SECTION_NAME = 'light_yellow'
+COLOR_SECTION_SLUG = 'green'
+COLOR_REF = 'green'
+COLOR_SOURCE = 'light_green'
 
 def colorise(text, color):
     if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
@@ -511,6 +510,8 @@ def parse_and_expand(text, syntax, documented_instructions):
                 location = (replacement or REF_NOT_FOUND_MARKER).replace('.', '-'),
                 name = replacement,
             )
+        else:
+            replacement = colorise(replacement, COLOR_REF)
         expanded_text = expanded_text.replace(
             (r'\nameref{' + each + '}'),
             (replacement or REF_NOT_FOUND_MARKER),
@@ -519,24 +520,17 @@ def parse_and_expand(text, syntax, documented_instructions):
     return expanded_text
 
 def render_multiline_heading(heading_text, index, indent, noise, extra, ref):
-    colorise_with = None
-    if section_tracker.depth() < 2:
-        colorise_with = COLOR_SECTION_MAJOR
-    if section_tracker.depth() == 2:
-        colorise_with = COLOR_SECTION_MINOR
-    if section_tracker.depth() > 2:
-        colorise_with = COLOR_SECTION_SUBSECTION
-
     format_line_title = '{prefix}[{index}] {text}'
     format_line_ref = '{prefix}{index_prefix}{ref}'
     ref_name = ''
     if ref is not None:
-        ref_name = ' {{{}}}'.format(ref)
+        ref_name = ' {{{}}}'.format(colorise(ref, COLOR_SECTION_SLUG))
     top_marker = ''
     top_marker_spacing = ''
 
     slug = section_tracker.slug(index, ref)
     index_slug = index.replace('.', '-')
+    index_prefix = len(index) + 2   # +2 for '[' and ']'
 
     if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
         format_line_title = '{prefix}[{index}] <a id="{slug}"><a id="{index_slug}"></a><a href="#{slug}">{text}</a>{top_marker_spacing}{top_marker}'
@@ -549,14 +543,13 @@ def render_multiline_heading(heading_text, index, indent, noise, extra, ref):
 
     print(format_line_title.format(
         prefix = (' ' * indent),
-        index = index,
-        index_slug = index_slug,
+        index = colorise(index, COLOR_SECTION_INDEX),
+        index_slug = index,
         slug = slug,
-        text = colorise(heading_text, colorise_with),
+        text = colorise(heading_text, COLOR_SECTION_NAME),
         top_marker = top_marker,
         top_marker_spacing = top_marker_spacing,
     ))
-    index_prefix = len(index) + 2   # +2 for '[' and ']'
     print(format_line_ref.format(
         prefix = (' ' * indent),
         index_prefix = (' ' * index_prefix),
@@ -564,14 +557,6 @@ def render_multiline_heading(heading_text, index, indent, noise, extra, ref):
     ))
 
 def render_heading(heading_text, indent, noise = False, extra = None, ref = None):
-    colorise_with = None
-    if section_tracker.depth() < 2:
-        colorise_with = COLOR_SECTION_MAJOR
-    if section_tracker.depth() == 2:
-        colorise_with = COLOR_SECTION_MINOR
-    if section_tracker.depth() > 2:
-        colorise_with = COLOR_SECTION_SUBSECTION
-
     format_line = '{prefix}[{index}] {text}{ref}'
     index = section_tracker.heading(heading_text, noise = noise, extra = extra, ref = ref)
     ref_name = ''
@@ -582,6 +567,7 @@ def render_heading(heading_text, indent, noise = False, extra = None, ref = None
 
     slug = section_tracker.slug(index, ref)
     index_slug = index.replace('.', '-')
+    index_prefix = len(index) + 2
 
     if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
         format_line = '{prefix}[{index}] <a id="{slug}"></a><a id="{index_slug}"></a><a href="#{slug}"><strong>{text}</strong></a>{ref}{top_marker_spacing}{top_marker}'
@@ -595,16 +581,20 @@ def render_heading(heading_text, indent, noise = False, extra = None, ref = None
 
     rendered_line = format_line.format(
         prefix = (' ' * indent),
-        index = index,
+        index = colorise(index, COLOR_SECTION_INDEX),
         index_slug = index_slug,
         slug = slug,
-        text = colorise(heading_text, colorise_with),
-        ref = ref_name,
+        text = colorise(heading_text, COLOR_SECTION_NAME),
+        ref = (
+            ' {{{}}}'.format(colorise(ref, COLOR_SECTION_SLUG))
+            if ref is not None else
+            ''
+        ),
         top_marker = top_marker,
         top_marker_spacing = top_marker_spacing,
     )
 
-    visible_width = indent + len(index) + 2 + 1 + len(section_tracker.slug(index, ref)) + len(ref_name)
+    visible_width = indent + index_prefix + 1 + len(section_tracker.slug(index, ref)) + len(ref_name)
     if visible_width >= (LINE_WIDTH - len(TOP_MARKER)):
         return render_multiline_heading(heading_text, index, indent, noise, extra, ref)
 
@@ -718,7 +708,11 @@ class RENDERING_MODE_ASCII_RENDERER:
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
             replacement = (REFS['labels'][name].get('index') if REFS is not None else None)
-            return (replacement or REF_NOT_FOUND_MARKER)
+            return (
+                colorise(replacement, COLOR_REF)
+                if replacement is not None else
+                REF_NOT_FOUND_MARKER
+            )
 
         m = KEYWORD_NAMEREF_REGEX.match(text)
         if m:
@@ -726,7 +720,11 @@ class RENDERING_MODE_ASCII_RENDERER:
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: \\nameref{{{}}}\n'.format(name))
             replacement = (REFS['labels'][name].get('name') if REFS is not None else None)
-            return (replacement or REF_NOT_FOUND_MARKER)
+            return (
+                colorise(replacement, COLOR_REF)
+                if replacement is not None else
+                REF_NOT_FOUND_MARKER
+            )
 
         m = KEYWORD_COLOR_REGEX.match(text)
         if m:
@@ -1414,6 +1412,9 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
         # parts of the text.
         if in_source and (RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART):
             text = text.replace('<', '&lt;').replace('>', '&gt;')
+        if in_source and (RENDERING_MODE != RENDERING_MODE_HTML_ASCII_ART):
+            text = '\n'.join(
+                colorise(each, COLOR_SOURCE) for each in text.splitlines())
 
         print(text)
 
