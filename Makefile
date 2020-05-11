@@ -17,3 +17,4 @@ install:
 	mkdir -p $(BIN_PATH)
 	cp ./view.py $(EXECUTABLE)
 	chmod +x $(EXECUTABLE)
+	sed -i "s/__commit__ = '\<HEAD\>'/__commit__ = '$(shell git rev-parse HEAD)'/" $(EXECUTABLE)

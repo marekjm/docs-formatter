@@ -14,7 +14,8 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
+__commit__ = 'HEAD'
 
 
 # Available rendering modes.
@@ -1764,7 +1765,15 @@ def main(args):
         exit(not len(args))
 
     if ('--version' in args):
-        sys.stdout.write('{}\n'.format(__version__))
+        fmt = (
+            'docs-formatter version {version} ({commit})'
+            if ('--verbose' in args) else
+            '{version}'
+        )
+        sys.stdout.write((fmt + '\n').format(
+            version = __version__,
+            commit = __commit__,
+        ))
         exit(0)
 
     render_view(args)
