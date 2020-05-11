@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 
 
 # Available rendering modes.
@@ -918,6 +918,9 @@ TOKENS_THAT_SHOULD_NOT_BE_SUCCEEDED_BY_WHITESPACE = (
     '(',
 )
 def simple_join_with_spaces(chunks):
+    if not chunks:
+        return ''
+
     new_line = [chunks[0]['rendered']]
     for each in chunks[1:]:
         text = each['rendered']
@@ -942,8 +945,12 @@ def longen_tokenised_line(chunks, width):
         sys.stderr.write('spaces_per_split = {}\n'.format(spaces_per_split))
         sys.stderr.write('spaces_left = {}\n'.format(spaces_left))
 
-    new_line = [chunks[0]['rendered']]
-    line_length = chunks[0]['length']
+    if chunks:
+        new_line = [chunks[0]['rendered']]
+        line_length = chunks[0]['length']
+    else:
+        new_line = ''
+        line_length = 0
 
     normal_spacing = ('  ' if spaces_per_split == 2 else ' ')
     for each in chunks[1:]:
