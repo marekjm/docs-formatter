@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 __commit__ = 'HEAD'
 
 
@@ -94,12 +94,15 @@ def longen(lines, width):
 
 
 RENDER_TIMESTAMP = os.environ.get('RENDER_TIMESTAMP', 'none')
-LINE_WIDTH = int(os.environ.get('RENDER_COLUMNS', -1))
 MARGIN_COLUMNS = 2
-if LINE_WIDTH is -1:
-    LINE_WIDTH = int(os.popen('stty size', 'r').read().split()[1]) - MARGIN_COLUMNS
-# FIXME MARGIN_COLUMNS are applied only to auto-detected line width; shouldn't they
-# also apply to the manually-set width?
+LINE_WIDTH = int(os.popen('stty size', 'r').read().split()[1])
+if 'RENDER_COLUMNS' in os.environ:
+    x = os.environ.get('RENDER_COLUMNS', LINE_WIDTH)
+    if x.startswith('<'):
+        LINE_WIDTH = min(LINE_WIDTH, int(x[1:]))
+    else:
+        LINE_WIDTH = int(x)
+LINE_WIDTH -= MARGIN_COLUMNS
 
 TOP_MARKER = '^^^^'
 # See https://www.unicode.org/charts/beta/nameslist/n_2190.html
