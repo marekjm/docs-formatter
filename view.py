@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.6'
+__version__ = '0.0.7'
 __commit__ = 'HEAD'
 
 
@@ -611,6 +611,13 @@ class Types:
             raise ArgumentError(value)
 
     @staticmethod
+    def integer(value):
+        try:
+            return int(value)
+        except Exception:
+            raise ArgumentError(value)
+
+    @staticmethod
     def string(value):
         return value
 
@@ -1085,7 +1092,10 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
 
     in_list = False
     in_list_enumerated = False
+    in_list_items = 0
+    in_list_enumerated_indent = 0
     new_list_item = False
+    in_list_index = 0
 
     in_listed = False
     in_listed_sorted = False
@@ -1137,17 +1147,42 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
         if each.startswith(r'\list{begin}'):
             params = build_params(PARAMETER_REGEX.findall(each[len(r'\list{begin}'):]), {
                 'enumerated': Types.boolean,
+                'items': Types.integer,
             }, default = {
                 'enumerated': False,
+                'items': None,
             })
+
 
             in_list = True
             in_list_enumerated = params['enumerated']
-            indent += 2
+            in_list_items = params['items']
+
+            if in_list_enumerated and in_list_items is None:
+                sys.stderr.write(
+                    'error: enumerated list must specify number of items\n')
+                sys.stderr.write(
+                    'note: the number is given as an order of magnitude, i.e.\n'
+                    '      items=n means that at most 10^n items are on the list\n')
+                exit(1)
+
+            if in_list_enumerated:
+                in_list_items = (10 ** in_list_items)
+
+            in_list_index = 0
+
+            in_list_enumerated_indent = 0
+            if in_list_enumerated:
+                in_list_enumerated_indent = len(str(in_list_items))
+                if in_list_enumerated_indent % 2:
+                    in_list_enumerated_indent += 1
+
+            indent += (2 + in_list_enumerated_indent)
+
             continue
         if each == r'\list{end}':
             in_list = False
-            indent -= 2
+            indent -= (2 + in_list_enumerated_indent)
             continue
         if each.startswith(r'\listed{begin}'):
             params = build_params(PARAMETER_REGEX.findall(each[len(r'\listed{begin}'):]), {
@@ -1164,6 +1199,7 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
             continue
         if each == r'\item':
             new_list_item = True
+            in_list_index += 1
             continue
         if KEYWORD_INDENT_REGEX.match(each):
             count = int(KEYWORD_INDENT_REGEX.match(each).group(1) or DEFAULT_INDENT_WIDTH)
@@ -1403,8 +1439,16 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
             prefix = current_indent_text,
         )
         if in_list and new_list_item:
-            text = current_indent_text[:-2] + '-' + text[indent - 1:]
-            # text = (' ' * (indent - 2) + '-' + text[indent - 1:])
+            list_index = '-'
+            x = 0
+            if in_list_enumerated:
+                x = len(str(in_list_items))
+                list_index = '{{:{}d}}'.format(x).format(in_list_index)
+            text = (
+                  current_indent_text[:-(2 + x)]
+                + list_index
+                + text[indent - 1 - x + (len(list_index) - 1):]
+            )
             new_list_item = False
 
         # We need this because basic replacement is performed as part of the
