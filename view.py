@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.8'
+__version__ = '0.0.9'
 __commit__ = 'HEAD'
 
 
@@ -1517,7 +1517,8 @@ def render_toc(max_depth = None, title = 'TABLE OF CONTENTS'):
             character = '_'
         if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
             just = (character * (LINE_WIDTH - longest_index - 1 - len(heading)))
-            heading_link = '{just} <a href="#{slug}">{text}</a>'.format(
+            fmt = '{just} <a href="#{slug}">{text}</a>'
+            heading_link = fmt.format(
                 just = just,
                 slug = section_tracker.slug(index, ref),
                 text = (
@@ -1526,7 +1527,7 @@ def render_toc(max_depth = None, title = 'TABLE OF CONTENTS'):
                     else heading
                 ),
             )
-            emit_line('{}{}'.format(
+            emit_line('<span class="toc_line">{}{}</span>'.format(
                 (index + ' ').ljust(longest_index, character),
                 heading_link,
             ))
@@ -1595,6 +1596,17 @@ def main(args):
                 + ' margin-bottom: -1em;'
                 + ' }\n'
             )
+        sys.stdout.write(
+              'span.toc_line:hover {'
+            + ' text-decoration: underline;'
+            + ' font-style: italic;'
+            + ' }\n'
+        )
+        sys.stdout.write(
+              'span.toc_line:hover a {'
+            + ' font-weight: bold;'
+            + ' }\n'
+        )
         sys.stdout.write('</style>\n')
         sys.stdout.write('<title>{}</title>\n'.format(TITLE))
         sys.stdout.write('</head>\n')
