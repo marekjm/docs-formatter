@@ -39,6 +39,7 @@ syntax match docsSectionEnd         "\\section{end}" contains=docsBeginEnd
 
 syntax match docsRefLink            contained "{.*}"ms=s+1,me=e-1
 syntax match docsRef                "\v\\ref\{.*\}" contains=docsRefLink
+syntax match docsNameRef            "\v\\nameref\{.*\}" contains=docsRefLink
 
 syntax match docsSourceBegin        contained "\\source{begin}"
     \ contains=docsBeginEnd
@@ -84,6 +85,7 @@ highlight link docsSectionEnd       Statement
 
 highlight link docsRefLink          Special
 highlight link docsRef              Boolean
+highlight link docsNameRef          Boolean
 
 highlight link docsSourceBegin      Statement
 highlight link docsSourceEnd        Statement
