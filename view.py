@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.9'
+__version__ = '0.0.10'
 __commit__ = 'HEAD'
 
 
@@ -397,7 +397,7 @@ class SectionTracker:
         return self._recorded_headings
 
     def slug(self, index, ref = None):
-        return (ref or index).replace('.', '-')
+        return (ref or index)
 
     def current_base_index(self):
         return '.'.join(map(str, self._path))
@@ -814,9 +814,10 @@ class RENDERING_MODE_HTML_ASCII_ART_RENDERER:
             name = m.group(1)
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
+            location = (name if REFS is not None else REF_NOT_FOUND_MARKER)
             replacement = (REFS['labels'][name].get('index') if REFS is not None else REF_NOT_FOUND_MARKER)
             replacement = '<a href="#{location}">{name}</a>'.format(
-                location = replacement.replace('.', '-'),
+                location = location,
                 name = replacement,
             )
             return replacement
@@ -824,13 +825,15 @@ class RENDERING_MODE_HTML_ASCII_ART_RENDERER:
         m = KEYWORD_NAMEREF_REGEX.match(text)
         if m:
             name = m.group(1)
+            sys.stderr.write('elo: {}\n'.format(name))
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
-            location = (REFS['labels'][name].get('index') if REFS is not None else REF_NOT_FOUND_MARKER)
+            location = (name if REFS is not None else REF_NOT_FOUND_MARKER)
             replacement = (REFS['labels'][name].get('name') if REFS is not None else REF_NOT_FOUND_MARKER)
-            replacement = '<a href="#{location}">{name}</a>'.format(
-                location = location.replace('.', '-'),
+            replacement = '<a href="#{location}">{name} ({index})</a>'.format(
+                location = location,
                 name = replacement,
+                index = REFS['labels'][name].get('index'),
             )
             return replacement
 
@@ -874,7 +877,10 @@ class RENDERING_MODE_HTML_ASCII_ART_RENDERER:
             name = m.group(1)
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
-            replacement = (REFS['labels'][name].get('name') if REFS is not None else None)
+            replacement = ('{} ({})'.format(
+                REFS['labels'][name].get('name'),
+                REFS['labels'][name].get('index'),
+            ) if REFS is not None else None)
             return len(replacement or REF_NOT_FOUND_MARKER)
 
         m = KEYWORD_COLOR_REGEX.match(text)
