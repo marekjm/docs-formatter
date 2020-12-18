@@ -827,13 +827,17 @@ class RENDERING_MODE_HTML_ASCII_ART_RENDERER:
             name = m.group(1)
             sys.stderr.write('elo: {}\n'.format(name))
             if REFS is not None and name not in REFS['labels']:
-                raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
+                raise InvalidReference('invalid reference: {}\n'.format(name))
             location = (name if REFS is not None else REF_NOT_FOUND_MARKER)
             replacement = (REFS['labels'][name].get('name') if REFS is not None else REF_NOT_FOUND_MARKER)
             replacement = '<a href="#{location}">{name} ({index})</a>'.format(
                 location = location,
                 name = replacement,
-                index = REFS['labels'][name].get('index'),
+                index = (
+                    REFS['labels'][name].get('index')
+                    if REFS is not None
+                    else REF_NOT_FOUND_MARKER
+                ),
             )
             return replacement
 
