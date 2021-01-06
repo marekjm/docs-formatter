@@ -825,7 +825,6 @@ class RENDERING_MODE_HTML_ASCII_ART_RENDERER:
         m = KEYWORD_NAMEREF_REGEX.match(text)
         if m:
             name = m.group(1)
-            sys.stderr.write('elo: {}\n'.format(name))
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: {}\n'.format(name))
             location = (name if REFS is not None else REF_NOT_FOUND_MARKER)
@@ -1515,18 +1514,33 @@ def render_toc(max_depth = None, title = 'TABLE OF CONTENTS'):
     emit_line('{}'.format(title.center(LINE_WIDTH)))
     emit_line()
     longest_index = max(map(len, map(lambda e: e[0], section_tracker.recorded_headings()))) + 1
+
+    labels = list(map(lambda e: (((e[0].count('.') * 2) + len(e[1])), e[1]),
+        section_tracker.recorded_headings()))
+    longest_label = max(map(lambda e: e[0], labels))
+    longest_label_s = list(filter(lambda e: e[0] == longest_label,
+        labels))[0][1]
     for index, heading, noise, extra, ref in section_tracker.recorded_headings():
         if noise:
             continue
-        character = '.'
-        if max_depth is not None and index.count('.') > max_depth:
+
+        depth = index.count('.')
+        if max_depth is not None and depth > max_depth:
             continue
-        #if max_depth is not None and index.count('.') == 0:
-        is_chapter = (index.count('.') == 0)
-        if is_chapter:
-            character = '_'
+
+        is_chapter = (depth == 0)
+        character = ('.' if not is_chapter else '_')
+
+        pad_length = (depth * 2)
+        just = (character * (LINE_WIDTH
+            - longest_index
+            - longest_label
+            + pad_length
+            - 1))
+
+        padded_index = (index + ' ').ljust(longest_index, character)
+
         if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
-            just = (character * (LINE_WIDTH - longest_index - 1 - len(heading)))
             fmt = '{just} <a href="#{slug}">{text}</a>'
             heading_link = fmt.format(
                 just = just,
@@ -1538,13 +1552,14 @@ def render_toc(max_depth = None, title = 'TABLE OF CONTENTS'):
                 ),
             )
             emit_line('<span class="toc_line">{}{}</span>'.format(
-                (index + ' ').ljust(longest_index, character),
+                padded_index,
                 heading_link,
             ))
         else:
-            emit_line('{}{}'.format(
-                (index + ' ').ljust(longest_index, character),
-                (' ' + heading).rjust((LINE_WIDTH - longest_index), character),
+            emit_line('{}{} {}'.format(
+                padded_index,
+                just,
+                heading,
             ))
     emit_line()
     emit_line('{}'.format('-' * LINE_WIDTH))
@@ -1558,6 +1573,16 @@ def render_toc_overview():
 
 def render_toc_full():
     render_toc()
+
+
+# Structure of a document:
+#
+# PART
+#   CHAPTER
+#     Section*
+#
+# APPENDIX
+#
 
 def main(args):
     if (not len(args)) or ('--help' in args) or ('-h' in args):
