@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.10'
+__version__ = '0.0.11'
 __commit__ = 'HEAD'
 
 
@@ -194,6 +194,7 @@ KEYWORD_CALLSEQUENCE_END = r'\callsequence{end}'
 KEYWORD_CALL_BEGIN = r'\call{begin}'
 KEYWORD_CALL_END = r'\call{end}'
 KEYWORD_CALLOF = re.compile(r'\\callof{(.*)}')
+KEYWORD_TOC = re.compile(r'\\toc{(.*)}')
 def paragraph_visible(para):
     para = (para[0] if para else None)
     if para is None:
@@ -253,6 +254,12 @@ def into_paragraphs(text):
                 paragraphs.append(para)
             para = []
             paragraphs.append([r'\toc{full}'])
+            continue
+        if KEYWORD_TOC.match(each):
+            if para:
+                paragraphs.append(para)
+            para = []
+            paragraphs.append([each])
             continue
         if each == r'\break':
             paragraphs.append(para)
@@ -1122,6 +1129,9 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
         if each == r'\toc{full}':
             print(each)
             continue
+        if KEYWORD_TOC.match(each):
+            print(each)
+            continue
         if each == r'\reflow{off}':
             reflow = False
             continue
@@ -1510,17 +1520,28 @@ def render_view(args):
 def emit_line(s = ''):
     sys.stdout.write('{}\n'.format(s))
 
-def render_toc(max_depth = None, title = 'TABLE OF CONTENTS'):
-    emit_line('{}'.format(title.center(LINE_WIDTH)))
-    emit_line()
-    longest_index = max(map(len, map(lambda e: e[0], section_tracker.recorded_headings()))) + 1
+def render_toc(max_depth = None, subset = None, title = 'TABLE OF CONTENTS'):
+    if title:
+        emit_line('{}'.format(title.center(LINE_WIDTH)))
+        emit_line()
+
+    headings = section_tracker.recorded_headings()
+    if subset is not None:
+        if type(subset) is str:
+            subset = REFS['labels'][subset].get('index', -1)
+        headings = list(filter(lambda e: e[0].startswith('{}.'.format(subset)),
+            headings))
+    if max_depth is not None:
+        headings = list(filter(lambda e: (e[0].count('.') <= max_depth),
+            headings))
+
+    longest_index = max(map(len, map(lambda e: e[0], headings))) + 1
 
     labels = list(map(lambda e: (((e[0].count('.') * 2) + len(e[1])), e[1]),
-        section_tracker.recorded_headings()))
+        headings))
     longest_label = max(map(lambda e: e[0], labels))
-    longest_label_s = list(filter(lambda e: e[0] == longest_label,
-        labels))[0][1]
-    for index, heading, noise, extra, ref in section_tracker.recorded_headings():
+
+    for index, heading, noise, extra, ref in headings:
         if noise:
             continue
 
@@ -1561,9 +1582,11 @@ def render_toc(max_depth = None, title = 'TABLE OF CONTENTS'):
                 just,
                 heading,
             ))
-    emit_line()
-    emit_line('{}'.format('-' * LINE_WIDTH))
-    emit_line()
+
+    if title:
+        emit_line()
+        emit_line('{}'.format('-' * LINE_WIDTH))
+        emit_line()
 
 def render_toc_overview():
     render_toc(
@@ -1669,6 +1692,12 @@ def main(args):
             continue
         if each == r'\toc{full}':
             render_toc_full()
+            continue
+        if KEYWORD_TOC.match(each):
+            render_toc(
+                subset = str(KEYWORD_TOC.match(each).groups(1)[0]),
+                title = '',
+            )
             continue
         emit_line('{}'.format(each))
 
