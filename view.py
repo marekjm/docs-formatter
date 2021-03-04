@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.13'
+__version__ = '0.0.14'
 __commit__ = 'HEAD'
 
 
@@ -518,7 +518,10 @@ def parse_and_expand(text, syntax, documented_instructions):
                 name = replacement,
             )
         else:
-            replacement = colorise(replacement, COLOR_REF)
+            replacement = '{} {{{}}}'.format(
+                colorise(replacement, COLOR_REF),
+                colorise(each, COLOR_REF),
+            )
         expanded_text = expanded_text.replace(
             (r'\nameref{' + each + '}'),
             (replacement or REF_NOT_FOUND_MARKER),
@@ -735,7 +738,10 @@ class RENDERING_MODE_ASCII_RENDERER:
                 raise InvalidReference('invalid reference: \\nameref{{{}}}\n'.format(name))
             replacement = (REFS['labels'][name].get('name') if REFS is not None else None)
             return (
-                colorise(replacement, COLOR_REF)
+                '{} {{{}}}'.format(
+                    colorise(replacement, COLOR_REF),
+                    colorise(name, COLOR_REF),
+                )
                 if replacement is not None else
                 REF_NOT_FOUND_MARKER
             )
@@ -779,6 +785,10 @@ class RENDERING_MODE_ASCII_RENDERER:
             if REFS is not None and name not in REFS['labels']:
                 raise InvalidReference('invalid reference: \\ref{{{}}}\n'.format(name))
             replacement = (REFS['labels'][name].get('name') if REFS is not None else None)
+            replacement = '{} {{{}}}'.format(
+                replacement,
+                name,
+            )
             return len(replacement or REF_NOT_FOUND_MARKER)
 
         m = KEYWORD_COLOR_REGEX.match(text)
