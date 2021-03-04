@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.12'
+__version__ = '0.0.13'
 __commit__ = 'HEAD'
 
 
@@ -1563,6 +1563,9 @@ def render_toc(max_depth = None, subset = None, title = 'TABLE OF CONTENTS'):
 
         padded_index = (index + ' ').ljust(longest_index, character)
         prefix = (indent * ' ')
+
+        if (max_depth is None or max_depth > 1) and is_chapter:
+            emit_line('')
 
         if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
             fmt = '{just} <a href="#{slug}">{text}</a>'
