@@ -114,12 +114,8 @@ NESTED_CALL_MARKER = '↳ '
 TITLE = None
 
 
-REFS_FILE = os.path.join('.', 'refs.json')
 REFS = None
 REF_NOT_FOUND_MARKER = '????'
-if os.path.isfile(REFS_FILE):
-    with open(REFS_FILE) as ifstream:
-        REFS = json.loads(ifstream.read())
 
 
 def stringify_encoding(encoding):
@@ -1650,6 +1646,12 @@ def main(args):
             commit = __commit__,
         ))
         exit(0)
+
+    REFS_FILE = os.path.join('.', '{}.json'.format(args[0]))
+    if os.path.isfile(REFS_FILE):
+        with open(REFS_FILE) as ifstream:
+            global REFS
+            REFS = json.loads(ifstream.read())
 
     render_view(args)
 
