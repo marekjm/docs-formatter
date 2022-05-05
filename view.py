@@ -14,7 +14,7 @@ except ImportError:
     colored = None
 
 
-__version__ = '0.0.14'
+__version__ = '0.0.15'
 __commit__ = 'HEAD'
 
 
@@ -1625,34 +1625,7 @@ def render_toc_full():
 # APPENDIX
 #
 
-def main(args):
-    if (not len(args)) or ('--help' in args) or ('-h' in args):
-        sys.stdout.write('docs-formatter <source-file>\n')
-        sys.stdout.write('\n')
-        sys.stdout.write('OPTIONS\n')
-        sys.stdout.write('\n')
-        sys.stdout.write('    -h, --help    - display help\n')
-        sys.stdout.write('        --version - display version information\n')
-        sys.stdout.write('\n')
-        sys.stdout.write('LICENSE\n')
-        sys.stdout.write('\n')
-        sys.stdout.write('    This program is Free Software published under GNU GPL v3 license.\n')
-        exit(not len(args))
-
-    if ('--version' in args):
-        fmt = (
-            'docs-formatter version {version} ({commit})'
-            if ('--verbose' in args) else
-            '{version}'
-        )
-        sys.stdout.write((fmt + '\n').format(
-            version = __version__,
-            commit = __commit__,
-        ))
-        exit(0)
-
-    render_view(args)
-
+def emit_view_impl(args):
     if RENDERING_MODE == RENDERING_MODE_HTML_ASCII_ART:
         sys.stdout.write('<!DOCTYPE html>\n')
         sys.stdout.write('<html>\n')
@@ -1727,6 +1700,43 @@ def main(args):
         sys.stdout.write('</pre>\n')
         sys.stdout.write('</body>\n')
         sys.stdout.write('</html>\n')
+
+def emit_view(args):
+    try:
+        emit_view_impl(args)
+    except BrokenPipeError:
+        # This is caused by eg, less(1) being exited before scrolling to the end
+        # of the emitted stream.
+        pass
+
+def main(args):
+    if (not len(args)) or ('--help' in args) or ('-h' in args):
+        sys.stdout.write('docs-formatter <source-file>\n')
+        sys.stdout.write('\n')
+        sys.stdout.write('OPTIONS\n')
+        sys.stdout.write('\n')
+        sys.stdout.write('    -h, --help    - display help\n')
+        sys.stdout.write('        --version - display version information\n')
+        sys.stdout.write('\n')
+        sys.stdout.write('LICENSE\n')
+        sys.stdout.write('\n')
+        sys.stdout.write('    This program is Free Software published under GNU GPL v3 license.\n')
+        exit(not len(args))
+
+    if ('--version' in args):
+        fmt = (
+            'docs-formatter version {version} ({commit})'
+            if ('--verbose' in args) else
+            '{version}'
+        )
+        sys.stdout.write((fmt + '\n').format(
+            version = __version__,
+            commit = __commit__,
+        ))
+        exit(0)
+
+    render_view(args)
+    emit_view(args)
 
     with open(REFS_FILE, 'w') as ofstream:
         ofstream.write(json.dumps(section_tracker.data(), indent=4))
