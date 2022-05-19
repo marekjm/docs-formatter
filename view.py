@@ -48,6 +48,36 @@ def colorise(text, color):
     return (colored.fg(color) + str(text) + colored.attr('reset'))
 
 
+def to_roman(n):
+    decimal_to_roman = dict((
+        (1000, 'M',),
+        (900, 'CM',),
+        (500,  'D',),
+        (400, 'CD',),
+        (100,  'C',),
+        ( 90, 'XC',),
+        ( 50,  'L',),
+        ( 40, 'XL',),
+        ( 10,  'X',),
+        (  9, 'IX',),
+        (  5,  'V',),
+        (  4, 'IV',),
+        (  1,  'I',),
+    ))
+    roman_digits = []
+    for r in sorted(decimal_to_roman.keys(), reverse = True):
+        x, y = divmod(n, r)
+        roman_digits.append(decimal_to_roman[r] * x)
+        n -= (r * x)
+        if n <= 0:
+            break
+    return ''.join(roman_digits)
+
+def to_alpha(n):
+    A = 65
+    return chr(A + n)
+
+
 DEBUG_LONGEN = False
 def longen_line(line, width):
     chunks = line.split()
@@ -376,6 +406,18 @@ class SectionTracker:
         self._counters = { '': self._start_counting_at, }
         self._recorded_headings = []
 
+        self._ctrs = {
+            'ch': self._start_counting_at,          # chapter
+            'ax': self._start_counting_at,          # appendix
+            'se': (self._start_counting_at - 1),    # section
+            '': self._start_counting_at,
+        }
+        self._base = 'ch'
+        self._rh = []
+        self._sk = ((self._base, self._start_counting_at,), None,)
+        self._sp = []
+        self._si = None
+
     def data(self):
         recorded = self._recorded_headings
         indexes = {}
@@ -410,24 +452,109 @@ class SectionTracker:
         return '.'.join(map(str, self._path))
 
     def heading(self, text, noise = False, extra = None, ref = None):
+        small_key = self._sk
+        big_counter, medium_counter = small_key
+        if big_counter is not None:
+            _, big_counter = big_counter
+        if medium_counter is not None:
+            _, medium_counter = medium_counter
+
+        small_counter = None
+
+        if self._depth == 0:
+            self._si = [
+                (self._base, self._ctrs[self._base],),
+                None,
+                [],
+            ]
+            self._ctrs[self._base] += 1
+        elif self._depth == 1:
+            self._si[1] = self._ctrs['se']
+            self._ctrs['se'] += 1
+        else:
+            self._si[2][-1] += 1
+
+        new_index = '{}.{}.{}'.format(
+            (to_alpha if self._base == 'ax' else to_roman)(big_counter),
+            medium_counter,
+            small_counter,
+        )
+
+        toc_index = '{fst} '
+        if medium_counter is not None:
+            toc_index += '{scd}'
+        if small_counter is not None:
+            toc_index += '.{small}'
+        toc_index = toc_index.format(
+            fst = (to_alpha if self._base == 'ax' else to_roman)(big_counter),
+            scd = medium_counter,
+            small = small_counter,
+        ).strip()
+
+        if self._depth == 1:
+            toc_index += '!'
+
+        # OLD SHIT BEGINS HERE
         base_index = self.current_base_index()
         counter_at_base_index = self._counters[base_index]
 
-        index = '{base}{sep}{counter}'.format(
+        txt_index = index = '{new_index}={depth} @ {toc_index} @ {si} @ {base}{sep}{counter}'.format(
             base = base_index,
             sep = ('.' if base_index else ''),
             counter = counter_at_base_index,
+            new_index = new_index.ljust(16),
+            toc_index = f'<{toc_index}>'.ljust(16),
+            depth = self._depth,
+            si = self.ss_ctr().ljust(14),
+        )
+        txt_index = self.ss_ctr()
+        index = (
+            txt_index.split(' ')[1]
+            if (' ' in txt_index) else
+            txt_index
         )
         self._recorded_headings.append( (index, text, noise, extra, ref,) )
+        self._rh.append({
+            'index': {
+                'toc': toc_index,
+                'txt': txt_index,
+            },
+            'text': text,
+            'noise': noise,
+            'extra': extra,
+            'ref': ref,
+        })
 
         self._counters[base_index] += 1
+        if small_counter is not None:
+            self._sp[-1] += 1
 
-        return index
+        return txt_index
+
+    def ss_ctr(self):
+        big = self._si[0]
+        big = (to_roman if big[0] == 'ch' else to_alpha)(big[1])
+
+        medium = self._si[1]
+        if medium is None:
+            return big
+
+        if not self._si[2]:
+            return f'{big} {medium}'
+
+        small = '.'.join(map(str, self._si[2]))
+
+        return f'{big} {medium}.{small}'
 
     def begin(self):
         # This marker is only useful for tracking how many sections were opened to
         # prevent calling .end() too many times.
         self._depth += 1
+
+        self.update_sk()
+        if self._depth > 1:
+            self._ctrs[self.ss_ctr()] = self._start_counting_at
+            self._si[2].append(self._start_counting_at - 1)
 
         current_index = self.current_base_index()
         counter = self._counters[current_index] - 1
@@ -440,8 +567,28 @@ class SectionTracker:
     def end(self):
         if self._depth == 0:
             raise SectionTracker.TooManyEnds()
+
         self._depth -= 1
+
         self._path.pop()
+
+        self.update_sk()
+        if self._si[2]:
+            self._si[2].pop()
+
+    def update_sk(self):
+        big_counter, medium_counter = self._sk
+        if self._depth == 0:
+            mc = None
+        elif self._depth == 1:
+            mc = ('se', self._ctrs['se'],)
+        else:
+            mc = medium_counter
+        self._sk = (
+            big_counter if self._depth else (self._base, self._ctrs[self._base],),
+            mc,
+        )
+
 section_tracker = SectionTracker(1)
 
 
@@ -1311,11 +1458,11 @@ def render_paragraphs(paragraphs, documented_instructions, syntax = None, indent
         if KEYWORD_CALLOF.match(each):
             whole_line = current_content + current_indent_text
             if len(whole_line) >= LINE_WIDTH:
-                sys.stderr.write('line too long: {} >= {}: {}\n'.format(
-                    len(whole_line),
-                    LINE_WIDTH,
-                    repr(current_content)
-                ))
+                # sys.stderr.write('line too long: {} >= {}: {}\n'.format(
+                #     len(whole_line),
+                #     LINE_WIDTH,
+                #     repr(current_content)
+                # ))
 
                 def simple_lex(text):
                     toks = []
@@ -1536,14 +1683,14 @@ def render_toc(max_depth = None, subset = None, title = 'TABLE OF CONTENTS'):
         emit_line()
 
     headings = section_tracker.recorded_headings()
-    if subset is not None:
-        if type(subset) is str:
-            subset = REFS['labels'][subset].get('index', -1)
-        headings = list(filter(lambda e: e[0].startswith('{}.'.format(subset)),
-            headings))
-    if max_depth is not None:
-        headings = list(filter(lambda e: (e[0].count('.') <= max_depth),
-            headings))
+    # if subset is not None:
+    #     if type(subset) is str:
+    #         subset = REFS['labels'][subset].get('index', -1)
+    #     headings = list(filter(lambda e: e[0].startswith('{}.'.format(subset)),
+    #         headings))
+    # if max_depth is not None:
+    #     headings = list(filter(lambda e: (e[0].count('.') <= max_depth),
+    #         headings))
 
     longest_index = max(map(len, map(lambda e: e[0], headings))) + 1
 
@@ -1551,15 +1698,16 @@ def render_toc(max_depth = None, subset = None, title = 'TABLE OF CONTENTS'):
         headings))
     longest_label = max(map(lambda e: e[0], labels))
 
-    for index, heading, noise, extra, ref in headings:
+    for i, (index, heading, noise, extra, ref,) in enumerate(headings):
         if noise:
             continue
 
-        depth = index.count('.')
+        new_index = section_tracker._rh[i]['index']['txt']
+        depth = (new_index.count(' ') + new_index.count('.'))
         if max_depth is not None and depth > max_depth:
             continue
 
-        is_chapter = (depth == 0)
+        is_chapter = (section_tracker._rh[i]['index']['toc'].count(' ') == 0)
         character = ('.' if not is_chapter else '_')
 
         indent = 2
